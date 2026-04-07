@@ -1,0 +1,2 @@
+[console_scripts]
+gis-agent = gis_agent.cli:main

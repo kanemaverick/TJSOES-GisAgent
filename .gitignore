@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Generated outputs and local experiment artifacts
+output/
+
+# Local GIS caches
+*.aux.xml
+*.qmd
+*.qpj

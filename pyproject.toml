@@ -1,0 +1,35 @@
+[project]
+name = "gis-agent"
+version = "0.1.0"
+description = "Natural-language GIS map generation agent with CRS guards and map standards."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "openai>=1.75.0",
+  "geopandas>=1.0.1",
+  "shapely>=2.1.0",
+  "pyproj>=3.7.1",
+  "matplotlib>=3.10.1",
+  "matplotlib-scalebar>=0.9.0",
+  "folium>=0.19.5",
+  "contextily>=1.6.2",
+  "mapclassify>=2.8.1",
+  "pandas>=2.2.3",
+  "fiona>=1.10.1",
+  "pyogrio>=0.11.0",
+  "openpyxl>=3.1.5",
+  "scipy>=1.12.0",
+]
+
+[project.scripts]
+gis-agent = "gis_agent.cli:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

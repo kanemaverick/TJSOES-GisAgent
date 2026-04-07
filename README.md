@@ -1,8 +1,10 @@
-# GIS Agent
+# TJSOES-GisAgent
 
-`gis-agent` is a deterministic GIS workflow engine for natural-language map tasks.
+`TJSOES-GisAgent` is a deterministic GIS workflow engine for natural-language map tasks.
 
 It started as a simple map generator and has been refactored into a small template library with task routing, fixed tool execution, CRS safeguards, and specialized renderers for common thematic-map workflows.
+
+This version is the current publishable release that has already been verified against Hainan administrative mapping, Shanghai rainfall thematic mapping, and template-based GIS summary workflows.
 
 ## Current Positioning
 

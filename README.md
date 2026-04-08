@@ -1,63 +1,119 @@
 # TJSOES-GisAgent
 
-`TJSOES-GisAgent` 是一个可部署的自然语言 GIS 制图引擎，支持命令行和 Web 页面两种使用方式。
+![Python](https://img.shields.io/badge/python-3.11%2B-1f6feb)
+![GIS](https://img.shields.io/badge/GIS-deterministic%20workflow-2d6a4f)
+![UI](https://img.shields.io/badge/UI-streamlit-bd5d38)
+![Deploy](https://img.shields.io/badge/deploy-docker%20%7C%20compose-005f73)
 
-项目采用“自然语言任务 -> 确定性工作流 -> 标准化 GIS 输出”的执行模式，避免让大模型直接自由生成不可控的地理处理代码。当前版本已经完成部署化改造，其他用户可以通过本地 Python 环境或 Docker 直接运行。
+`TJSOES-GisAgent` is a deployable natural-language GIS mapping engine for deterministic spatial workflows.
 
-## 效果展示 (Gallery)
+It is designed for users who want an agent-like GIS experience, but do not want unconstrained code generation. Instead of asking a model to freely write spatial scripts, this project routes requests into fixed GIS workflows with CRS safeguards, geometry repair, auditable plans, and standardized map outputs.
 
-下面是使用本项目生成的专题图示例：
+## Table of Contents
 
-### 1. 分级设色图 (Choropleth Map)
+- [Highlights](#highlights)
+- [Gallery](#gallery)
+- [Why This Project](#why-this-project)
+- [Core Capabilities](#core-capabilities)
+- [Project Structure](#project-structure)
+- [Quick Start](#quick-start)
+- [Deployment](#deployment)
+- [Web UI](#web-ui)
+- [How The Agent Works](#how-the-agent-works)
+- [Example Commands](#example-commands)
+- [Outputs](#outputs)
+- [Environment Variables](#environment-variables)
+- [Production Notes](#production-notes)
+- [Comparison With MapGPT Agent](#comparison-with-mapgpt-agent)
+- [Known Limitations](#known-limitations)
+- [Roadmap](#roadmap)
+- [LLM Mode](#llm-mode)
+
+## Highlights
+
+- Natural language to deterministic GIS workflow
+- Static map and Web UI support
+- CRS checks and geometry repair built in
+- Choropleth, rainfall interpolation, and point-in-polygon summary templates
+- Layer-role inference and field semantics inference
+- Deployable with local Python, Docker, or Docker Compose
+
+## Gallery
+
+### Choropleth Map
 ![分级设色图示例](assets/choropleth.png)
 
-### 2. 降雨量插值专题图 (Rainfall Map)
+### Rainfall Surface Map
 ![降雨量专题图示例](assets/rainfall.png)
 
-## 当前定位
+## Why This Project
 
-- 自然语言任务 -> 结构化的工作流 JSON
-- 采用确定性执行，而非自由形式的代码生成
-- 支持针对多种 GIS 地图模板的任务感知与路由
-- 旨在提供更接近 ArcGIS Pro 风格的地理处理体验
-- 支持通过 Web UI 上传数据并直接生成地图
+Many GIS agents look good in demos but break in real workflows because they:
 
-## 已实现功能
+- ignore CRS or treat all coordinates as analysis-ready
+- hallucinate tool calls or analysis parameters
+- fail to distinguish point, line, polygon, and tabular sources
+- generate non-standard map output without proper cartographic elements
+- lack auditable execution traces
 
-### 核心引擎 (Core engine)
+`TJSOES-GisAgent` takes the opposite approach:
 
-- 支持混合数据源读取：矢量图层与表格文件
-- 针对矢量工作流强制检查 CRS
-- 在进行分析前自动修复无效几何图形
-- 在投影分析前自动选择合适的分析 CRS
-- 每次运行都会保存输出 `workflow_plan.json` 和 `execution_report.json`
-- 提供 Web UI 封装，支持上传 Shapefile 组件、GeoJSON、GPKG、CSV、Excel
+- it plans first
+- it executes only supported tools
+- it preserves GIS guardrails
+- it records workflow and execution outputs
 
-### 任务模板 (Task templates)
+## Core Capabilities
 
-1. **降雨量 / 插值专题图**
-   - 输入：`Excel/CSV 表格 + 面状边界图层`
-   - 输出：插值降雨量表面、等值线、气象站分布点、经纬网、图例、比例尺、指北针
-   - 路由策略：`rainfall_surface_map`
+### Deterministic GIS Engine
 
-2. **分级设色图 (Choropleth map)**
-   - 输入：包含数值字段的面状图层
-   - 输出：分类的面状专题图
-   - 路由策略：`choropleth_map`
+- Mixed-source ingestion for vector layers and tabular data
+- Mandatory CRS validation for vector workflows
+- Geometry repair before overlay and polygon-based operations
+- Automatic projected CRS selection for metric analysis
+- Output artifacts saved for every run:
+  - `workflow_plan.json`
+  - `execution_report.json`
+  - rendered map output
 
-3. **面内点汇总图 (Point-in-polygon summary map)**
-   - 输入：点图层 + 面图层
-   - 输出：完成空间聚合后的面状汇总图
-   - 路由策略：`point_in_polygon_summary_map`
+### Agent Semantics
 
-### 渲染行为 (Rendering behavior)
+- Layer-role inference
+  - identifies likely `boundary`, `polygon_thematic`, `points`, `stations`, `stations_table`
+  - infers polygon layer index, point layer index, and boundary layer index for multi-source tasks
+- Field semantics inference
+  - selects likely thematic fields when the user does not specify one
+  - prioritizes fields resembling `population`, `density`, `rainfall`, `count`, `value`, `score`, `rate`
+- Task-level reasoning improvements
+  - point-in-polygon tasks no longer assume fixed input order
+  - choropleth tasks prefer more plausible thematic fields
+  - rainfall tasks prioritize station tables and boundary polygons
 
-- 标准的面状地图渲染器
-- 面向课程作业输出风格优化的精细降雨图渲染器
-- 针对行政专题图的分级设色渲染器
-- 支持将常规矢量图层输出为 Web 地图 (Web-map)
+### Supported Workflow Templates
 
-## 项目结构
+1. Rainfall surface map
+   - Input: `Excel/CSV + polygon boundary`
+   - Output: interpolated rainfall surface, contours, stations, legend, scale bar, north arrow
+   - Route: `rainfall_surface_map`
+
+2. Choropleth map
+   - Input: polygon layer with numeric attributes
+   - Output: classified thematic polygon map
+   - Route: `choropleth_map`
+
+3. Point-in-polygon summary map
+   - Input: point layer + polygon layer
+   - Output: aggregated polygon thematic map
+   - Route: `point_in_polygon_summary_map`
+
+### Rendering
+
+- Standard static polygon map renderer
+- Refined rainfall renderer for assignment-style output
+- Classified administrative choropleth renderer
+- Web map export for interactive map output
+
+## Project Structure
 
 ```text
 app.py
@@ -67,20 +123,22 @@ Makefile
 src/gis_agent/
   cli.py
   planner.py
+  semantics.py
   engine.py
   runtime.py
   workflow.py
   webapp.py
   tool_registry.py
   llm.py
+  prompts.py
 examples/
   create_sample_data.py
   render_shanghai_rainfall_refined.py
 ```
 
-## 部署方式
+## Quick Start
 
-### 方式 1: 本地 Python 部署
+### Local Python
 
 ```bash
 git clone <your-repo-url>
@@ -91,7 +149,48 @@ pip install --upgrade pip
 pip install -e .
 ```
 
-### 方式 2: Docker 部署
+### Start Web UI
+
+```bash
+source .venv/bin/activate
+gis-agent-web
+```
+
+Or:
+
+```bash
+streamlit run app.py
+```
+
+Or:
+
+```bash
+make install
+make web
+```
+
+Then open:
+
+```text
+http://localhost:8501
+```
+
+### Start CLI
+
+```bash
+source .venv/bin/activate
+gis-agent --help
+```
+
+Or:
+
+```bash
+make cli
+```
+
+## Deployment
+
+### Docker
 
 ```bash
 git clone <your-repo-url>
@@ -100,7 +199,7 @@ docker build -t tjsoes-gis-agent .
 docker run --rm -p 8501:8501 tjsoes-gis-agent
 ```
 
-### 方式 3: Docker Compose 一键启动
+### Docker Compose
 
 ```bash
 git clone <your-repo-url>
@@ -109,89 +208,42 @@ cp .env.example .env
 docker compose up --build
 ```
 
-启动后浏览器访问：
+Recommended delivery layout:
 
-```text
-http://localhost:8501
-```
+- `examples/`: read-only sample data
+- `runs/`: actual task outputs
+- `.env`: LLM credentials and model configuration
 
-## 面向其他用户的交付方式
+## Web UI
 
-如果你要把这个项目交给别人直接用，建议采用下面的形式：
+The current Web UI supports:
 
-- `Docker Compose` 方式：最稳定，适合课程组、实验室或服务器部署
-- `Web UI` 方式：最适合不会写命令行的用户
-- `CLI` 方式：最适合批量任务和脚本化运行
+- natural-language task input
+- GIS file upload
+- built-in prompt shortcuts
+- run status overview
+- result map preview
+- workflow plan and execution report download
+- recent task history
+- non-interactive startup suitable for deployment
 
-推荐交付目录约定：
+## How The Agent Works
 
-- `examples/`：只读示例数据
-- `runs/`：真实任务输出目录
-- `.env`：LLM 凭证和模型配置
+The current execution flow has four layers:
 
-## Web UI 产品化能力
+1. Natural-language task parsing
+   - identifies whether the task is closer to choropleth, point-in-polygon summary, rainfall interpolation, or generic mapping
+2. Data semantics inference
+   - identifies likely roles for each source
+   - infers the most plausible thematic field
+3. Deterministic workflow planning
+   - generates a fixed tool sequence rather than unconstrained code
+4. GIS execution and map rendering
+   - runs CRS checks, geometry repair, reprojection, analysis, and standardized rendering
 
-当前页面已经支持：
+## Example Commands
 
-- 任务输入、文件上传、执行按钮、结果清理
-- 内置任务模板快捷填充
-- 执行状态卡片和能力说明面板
-- 地图结果预览
-- `workflow_plan.json`、`execution_report.json`、结果图下载
-- 最近任务历史展示
-- 无交互启动，适合服务器部署
-
-## 快速开始
-
-```bash
-cd /path/to/TJSOES-GisAgent
-source .venv/bin/activate
-python3 -m pip install -e .
-python examples/create_sample_data.py
-```
-
-### Web 页面启动
-
-```bash
-source .venv/bin/activate
-gis-agent-web
-```
-
-或者：
-
-```bash
-streamlit run app.py
-```
-
-或者使用 Makefile：
-
-```bash
-make install
-make web
-```
-
-Web UI 支持：
-
-- 上传 GeoJSON、Shapefile、GPKG、CSV、Excel
-- 输入自然语言任务
-- 自动生成 `workflow_plan.json`
-- 执行 GIS 工作流并预览 `result.png` 或 `result.html`
-- 展示执行报告 `execution_report.json`
-
-### 命令行启动
-
-```bash
-source .venv/bin/activate
-gis-agent --help
-```
-
-或者：
-
-```bash
-make cli
-```
-
-### 示例 1: 分级设色图
+### Example 1: Choropleth Map
 
 ```bash
 gis-agent \
@@ -202,7 +254,7 @@ gis-agent \
   --run
 ```
 
-### 示例 2: 面内点汇总专题图
+### Example 2: Point-in-Polygon Summary
 
 ```bash
 gis-agent \
@@ -213,7 +265,13 @@ gis-agent \
   --run
 ```
 
-### 示例 3: 降雨量专题图
+For this type of task, the agent automatically infers:
+
+- which input is more likely the point layer
+- which input is more likely the polygon boundary layer
+- whether the aggregation should behave like `count`, `sum`, or `mean`
+
+### Example 3: Rainfall Surface Map
 
 ```bash
 gis-agent \
@@ -224,83 +282,19 @@ gis-agent \
   --run
 ```
 
-## 工作流输出
+## Outputs
 
-每个运行任务都会输出：
+Each task run produces:
 
-- `workflow_plan.json`：工作流执行计划
-- `execution_report.json`：执行报告
-- `result.png` 或 `result.html`：渲染结果图
+- `workflow_plan.json`: workflow execution plan
+- `execution_report.json`: execution report
+- `result.png` or `result.html`: rendered output
 
-针对一些特定的路由，还会自动导出派生的 GIS 过程数据。
+Some workflows also export derived GIS intermediate layers.
 
-## 环境变量
+## Environment Variables
 
-如果需要启用 LLM 规划模式，可在 `.env` 或 shell 中配置：
-
-```bash
-export OPENAI_API_KEY=...
-export OPENAI_MODEL=gpt-4.1
-export OPENAI_BASE_URL=https://your-compatible-endpoint/v1
-```
-
-Docker Compose 会自动读取 `.env`。
-
-## 生产部署建议
-
-- 优先使用 `docker compose up --build`
-- 将 `runs/` 目录映射到宿主机，便于保存生成结果
-- 如果对外网开放，建议在前面再加一层 Nginx / Caddy 反向代理
-- 如果多人共用，后续应补用户隔离和任务队列
-
-## 与 MapGPT Agent 的比较
-
-### `MapGPT Agent` 的优势
-
-- 从“输入 Prompt”到“输出图片”的体验更快
-- 针对轻量级的地图制作演示有着更好的开箱即用体验
-- 在输入数据已经准备完善的情况下，第一次尝试往往能得到视觉效果更好的地图
-
-### `gis-agent` 的优势
-
-- 确定性的工作流执行，而非无约束的代码生成
-- 显式的任务路由控制
-- 更容易测试和加固
-- 更容易扩展为类似于 ArcGIS Pro 的地理处理模式
-- 产生可审计的工作流和执行记录
-
-### 实际区别
-
-- `MapGPT Agent` 更像是一个基于自然语言的制图助手。
-- `gis-agent` 更像是一个可控的 GIS 执行引擎。
-- `gis-agent` 现在额外提供了可直接部署的 Web 页面，更适合交付给其他用户使用。
-
-## 已知不足
-
-- 目前还无法完全替代 ArcGIS Pro
-- CRS 策略有所改进，但在涵盖所有地理尺度上仍不完善
-- 布局质量受限于模板驱动，暂时缺乏完整的排版引擎
-- 自动标签放置和防碰撞处理依然比较基础
-- Web UI 当前适合单任务交互式使用，尚未加入用户权限、多任务队列和异步任务管理
-- 依然缺乏更多的任务模板：
-  - 核密度分析 (Kernel density)
-  - 缓冲区分析图 (Buffer analysis maps)
-  - 叠加分析图 (Overlay analysis maps)
-  - 网络/可达性分析图 (Network / accessibility maps)
-
-## 路线图 (Roadmap)
-
-下一步工作设想：
-
-1. 增加更多专题地图模板
-2. 为 Web UI 增加任务历史、结果归档和批处理支持
-3. 针对工作流路由和输出建立回归测试
-4. 进一步提升标题提取和字段推断能力
-5. 加入更强大的制图布局评分规则及预设样式
-
-## 大语言模型 (LLM) 模式
-
-依然支持兼容 OpenAI 接口的规划模式：
+To enable LLM planning mode:
 
 ```bash
 export OPENAI_API_KEY=...
@@ -308,4 +302,67 @@ export OPENAI_MODEL=gpt-4.1
 export OPENAI_BASE_URL=https://your-compatible-endpoint/v1
 ```
 
-在 `auto` 模式下，当检测到有效凭证时，引擎会使用 LLM 规划；否则将回退到模板规划模式。
+Docker Compose reads `.env` automatically.
+
+## Production Notes
+
+- Prefer `docker compose up --build`
+- Mount `runs/` to the host machine to retain outputs
+- Use Nginx or Caddy in front if exposing the service publicly
+- Add user isolation and task queueing before multi-user deployment
+
+## Comparison With MapGPT Agent
+
+### MapGPT Agent Strengths
+
+- faster prompt-to-image experience
+- better out-of-the-box experience for lightweight demos
+- often stronger first-pass visual polish when inputs are already clean
+
+### TJSOES-GisAgent Strengths
+
+- deterministic workflow execution instead of unconstrained code generation
+- explicit routing and tool control
+- easier to test and harden
+- better foundation for ArcGIS Pro-like geoprocessing behavior
+- auditable workflow and execution outputs
+- layer-role and field semantics inference
+
+### Practical Difference
+
+- `MapGPT Agent` behaves more like a natural-language cartography assistant
+- `TJSOES-GisAgent` behaves more like a controllable GIS execution engine
+- `TJSOES-GisAgent` emphasizes identifying source roles before analysis
+
+## Known Limitations
+
+- not yet a full replacement for ArcGIS Pro
+- CRS strategy is improved but not yet complete across all spatial scales
+- layout quality is still template-driven rather than managed by a full layout engine
+- label placement and collision handling remain basic
+- Web UI is still designed for single-task interactive usage
+- field semantics inference is currently heuristic, not model-based
+- layer-role inference still relies on naming and attribute cues for complex business layers
+- more workflow templates are still needed:
+  - kernel density
+  - buffer analysis
+  - overlay analysis
+  - network / accessibility analysis
+
+## Roadmap
+
+1. Add more thematic map templates
+2. Add task history, result archiving, and batch support to the Web UI
+3. Improve field alias understanding, Chinese field recognition, and layer purpose scoring
+4. Build regression tests for workflow routing and output quality
+5. Improve title extraction and field inference
+6. Add stronger cartographic layout presets and layout scoring
+
+## LLM Mode
+
+The project still supports OpenAI-compatible planning mode.
+
+When `--mode auto` is used:
+
+- if valid LLM credentials are present, the engine uses LLM planning
+- otherwise it falls back to deterministic template planning

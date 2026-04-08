@@ -11,6 +11,10 @@ class MapSpec:
     output_format: str = "png"
     task_type: str = "generic_map"
     classify_field: str | None = None
+    primary_layer_index: int = 0
+    polygon_layer_index: int | None = None
+    point_layer_index: int | None = None
+    table_layer_index: int | None = None
     basemap: bool = False
     color_scheme: str = "Blues"
     cartographic_preset: str = "standard"

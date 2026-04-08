@@ -75,6 +75,7 @@ def summarize_sources(paths: list[str]) -> list[dict]:
         ext = Path(path).suffix.lower()
         if ext in {".shp", ".geojson", ".json", ".gpkg", ".parquet"}:
             gdf = read_vector(path)
+            geom_types = sorted({str(value) for value in gdf.geometry.geom_type.dropna().unique().tolist()})
             summaries.append(
                 {
                     "path": path,
@@ -82,6 +83,9 @@ def summarize_sources(paths: list[str]) -> list[dict]:
                     "row_count": len(gdf),
                     "columns": gdf.columns.tolist(),
                     "crs": gdf.crs.to_string() if gdf.crs else None,
+                    "geom_types": geom_types,
+                    "numeric_fields": gdf.select_dtypes(include=["number"]).columns.astype(str).tolist(),
+                    "text_fields": gdf.select_dtypes(include=["object", "string"]).columns.astype(str).tolist(),
                 }
             )
         elif ext in {".xlsx", ".xls", ".csv"}:
@@ -93,6 +97,8 @@ def summarize_sources(paths: list[str]) -> list[dict]:
                     "row_count": len(df),
                     "columns": df.columns.tolist(),
                     "crs": None,
+                    "numeric_fields": df.select_dtypes(include=["number"]).columns.astype(str).tolist(),
+                    "text_fields": df.select_dtypes(include=["object", "string"]).columns.astype(str).tolist(),
                 }
             )
         else:

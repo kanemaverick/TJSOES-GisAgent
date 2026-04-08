@@ -19,10 +19,12 @@ dependencies = [
   "pyogrio>=0.11.0",
   "openpyxl>=3.1.5",
   "scipy>=1.12.0",
+  "streamlit>=1.44.0",
 ]
 
 [project.scripts]
 gis-agent = "gis_agent.cli:main"
+gis-agent-web = "gis_agent.webapp:main"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]

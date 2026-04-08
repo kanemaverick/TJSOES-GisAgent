@@ -1,0 +1,16 @@
+services:
+  gis-agent-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tjsoes-gis-agent
+    ports:
+      - "8501:8501"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+    volumes:
+      - ./runs:/app/runs
+      - ./examples:/app/examples:ro
+    restart: unless-stopped
